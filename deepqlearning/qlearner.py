@@ -36,7 +36,7 @@ class QLearner():
             self.policy_net.eval()
             with torch.no_grad():
                 return self.policy_net(state).max(1)[1].view(1, 1)
-        return torch.tensor([[self.env.action_space.sample()]])
+        return torch.tensor([[self.env.action_space.sample()]]).to(self.device)
     
     def update_target_net(self):
         target_net_state_dict = self.target_net.state_dict()

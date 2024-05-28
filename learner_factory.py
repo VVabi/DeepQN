@@ -3,13 +3,15 @@ import torch
 import gymnasium as gym
 from deepqlearning.qlearner import QLearner
 from networks.dqn_fully_connected import DQN
-from environments.env_wrappers import TorchWrapper
+from networks.dqn_cnn import CnnNet
+from environments.env_wrappers import TorchWrapper, StackframeWrapper
 
 
 class EnvironmentTag(Enum):
     ACROBOT = "ACROBOT"
     MOUNTAINCAR = "MOUNTAINCAR"
     CARTPOLE = "CARTPOLE"
+    RACINGCAR = "RACINGCAR"
 
 
 def create_learner(env_tag: EnvironmentTag, model_parameter_path=None):
@@ -49,6 +51,19 @@ def create_learner(env_tag: EnvironmentTag, model_parameter_path=None):
             'eps_start': 0.9,
             'eps_end': 0.05,
             'eps_decay': 1000,
+            'learning_rate': 0.0001,
+            'gamma': 0.99,
+            'tau': 0.005
+        }
+    elif env_tag == EnvironmentTag.RACINGCAR:
+        env     = StackframeWrapper(gym.make("CarRacing-v2", render_mode="human", continuous=False), device)
+        model   = CnnNet(env.action_space.n).to(device)
+        params = {
+            'replay_buffer_size': 10000,
+            'batch_size': 128,
+            'eps_start': 0.05,
+            'eps_end': 0.05,
+            'eps_decay': 5000,
             'learning_rate': 0.0001,
             'gamma': 0.99,
             'tau': 0.005
