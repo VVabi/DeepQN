@@ -22,6 +22,9 @@ class QLearner():
         self.target_net         = None
         self.train_wrapper      = None
 
+    def save_model(self, path):
+        torch.save(self.policy_net.state_dict(), path)
+
     def get_current_eps(self):
         return self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * self.steps_done / self.eps_decay)
 
@@ -123,3 +126,5 @@ class QLearner():
             total_reward += reward
 
         print(f'Average Test Reward: {total_reward/n_episodes}')
+
+        return total_reward/n_episodes
