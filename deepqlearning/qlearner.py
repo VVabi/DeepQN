@@ -2,6 +2,7 @@ from gymnasium import Env
 import torch
 import math
 from deepqlearning.replay_memory import ReplayMemory, Transition
+from networks.train_wrapper import TorchTrainWrapper
 import pickle
 
 class QLearner():
@@ -19,7 +20,7 @@ class QLearner():
         self.device             = device
         self.steps_done         = 0
         self.target_net         = None
-        self.optimizer          = None
+        self.train_wrapper      = None
 
     def get_current_eps(self):
         return self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * self.steps_done / self.eps_decay)
@@ -46,8 +47,10 @@ class QLearner():
         if self.target_net is None:
             self.target_net = pickle.loads(pickle.dumps(self.policy_net))
 
-        if self.optimizer is None:
-            self.optimizer = torch.optim.AdamW(self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True)
+        if self.train_wrapper is None:
+            self.train_wrapper = TorchTrainWrapper(self.policy_net, 
+                                                   torch.optim.AdamW(self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True),
+                                                    torch.nn.SmoothL1Loss())
 
         if len(self.replay_buffer) < self.batch_size:
             return
@@ -71,18 +74,10 @@ class QLearner():
                     next_state_values[idx] = self.target_net(state).max(1).values
 
 
-        expected_state_action_values = reward_batch + self.gamma * next_state_values
+        expected_state_action_values = (reward_batch + self.gamma * next_state_values).unsqueeze(1)
+        self.train_wrapper.train_step(state_action_values, expected_state_action_values)
         
 
-        criterion = torch.nn.SmoothL1Loss()
-
-        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
-        self.optimizer.step()
-    
     def episode(self, test = False):
         state, _ = self.env.reset()
 
